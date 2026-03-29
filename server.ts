@@ -4,16 +4,50 @@ import express from "express";
 import path from "path";
 import Groq from "groq-sdk";
 import crypto from "crypto";
+import fs from "fs";
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 
 app.use(express.json());
 
+// Persistent storage path
+const DB_PATH = path.resolve(process.cwd(), "database.json");
+
+// Helper to load/save database
+function loadDb() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const data = JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
+      return {
+        leaderboard: data.leaderboard || [],
+        userPurchases: new Map<string, any[]>(Object.entries(data.userPurchases || {}))
+      };
+    }
+  } catch (err) {
+    console.warn("DB Load Error:", err);
+  }
+  return { leaderboard: [], userPurchases: new Map<string, any[]>() };
+}
+
+function saveDb() {
+  try {
+    const data = {
+      leaderboard,
+      userPurchases: Object.fromEntries(userPurchases)
+    };
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error("DB Save Error:", err);
+  }
+}
+
+const { leaderboard: initialLeaderboard, userPurchases: initialPurchases } = loadDb();
+
 // In-memory store
 const sessions = new Map<string, any>();
-const leaderboard: any[] = [];
-const userPurchases = new Map<string, any[]>();
+const leaderboard: any[] = initialLeaderboard;
+const userPurchases = initialPurchases;
 
 const ARCHETYPES = [
   { id: "anchor", name: "The Anchor", description: "Opens high, concedes slowly. Very stubborn." },
@@ -133,6 +167,8 @@ app.post("/api/negotiate/accept", async (req, res) => {
   const pName = playerName || "Anonymous";
   if (!userPurchases.has(pName)) userPurchases.set(pName, []);
   userPurchases.get(pName)!.push({ productId: session.product.id, productName: session.product.name, dealPrice: deal, date: new Date().toISOString() });
+  
+  saveDb(); // Persist changes
 
   res.json({ success: true, entry, summary: { floorPrice: session.floorPrice, archetype: session.archetype.name, insight: "Great deal!" } });
 });
