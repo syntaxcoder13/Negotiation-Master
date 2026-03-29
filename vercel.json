@@ -16,10 +16,7 @@
       "src": "/api/(.*)",
       "dest": "server.ts"
     },
-    {
-      "src": "/images/(.*)",
-      "dest": "/images/$1"
-    },
+    { "handle": "filesystem" },
     {
       "src": "/(.*)",
       "dest": "/index.html"
