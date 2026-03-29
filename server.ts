@@ -58,9 +58,12 @@ const ARCHETYPES = [
 ];
 
 const PRODUCTS = [
-  { id: "motor-club", name: "Midnight Motor-Club", listedPrice: 1850, currency: "$", image: "https://images.unsplash.com/photo-1585366119957-e556f4002a01?auto=format&fit=crop&q=80&w=1000" },
-  { id: "zen-garden", name: "Botanical Zen Garden", listedPrice: 950, currency: "$", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&q=80&w=1000" },
-  { id: "space-rig", name: "Deep Space Mining Rig", listedPrice: 2400, currency: "$", image: "https://images.unsplash.com/photo-1581833971358-2c8b551f8a4c?auto=format&fit=crop&q=80&w=1000" }
+  { id: "watch", name: "Luxury Chronograph Watch", listedPrice: 1500, currency: "$", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&q=80&w=1000" },
+  { id: "camera", name: "1970s Film Camera", listedPrice: 850, currency: "$", image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000" },
+  { id: "laptop", name: "Next-Gen Gaming Laptop", listedPrice: 2500, currency: "$", image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&q=80&w=1000" },
+  { id: "guitar", name: "Limited Edition Electric Guitar", listedPrice: 1500, currency: "$", image: "https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&q=80&w=1000" },
+  { id: "sneakers", name: "Exclusive Designer Sneakers", listedPrice: 850, currency: "$", image: "https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&q=80&w=1000" },
+  { id: "coin", name: "1909-S VDB Lincoln Cent", listedPrice: 2500, currency: "$", image: "https://images.unsplash.com/photo-1589758438368-0ad531db3366?auto=format&fit=crop&q=80&w=1000" }
 ];
 
 // API Routes
