@@ -1,6 +1,6 @@
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Trophy, ArrowRight, Shield, Zap, LayoutGrid, User, Cpu, Terminal, Layers, Activity } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 interface Product {
   id: string;
@@ -57,6 +57,8 @@ export default function LandingPage({
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.05),transparent_70%)]"></div>
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+        {/* Film Grain / Noise Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] brightness-100 contrast-150"></div>
       </motion.div>
 
       {/* Nav */}
@@ -66,7 +68,7 @@ export default function LandingPage({
             <div className="absolute inset-0 bg-brand-emerald/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <Shield className="w-5 h-5 text-brand-emerald" />
           </div>
-          NEGOTIATION <span className="text-brand-emerald font-light">MASTER</span>
+          NEGOTIATION <span className="hidden sm:inline text-brand-emerald font-light">MASTER</span>
         </div>
 
         <div className="hidden lg:flex items-center gap-10 text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500">
@@ -77,10 +79,8 @@ export default function LandingPage({
           <a href="#terminal" className="hover:text-brand-emerald transition-colors">Terminal.io</a>
         </div>
 
-        <button className="px-6 py-2 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
-          Connect_
-        </button>
       </nav>
+
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-48 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
@@ -94,39 +94,79 @@ export default function LandingPage({
           <div className="border border-brand-emerald/20 bg-brand-emerald/5 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.4em] text-brand-emerald mb-8 inline-block backdrop-blur-sm">
             Neural Negotiation Engine v4.0
           </div>
-          <h1 className="text-7xl md:text-[8rem] xl:text-[10rem] font-black leading-none tracking-tight uppercase italic mb-8">
-            Negotiation <br />
-            <span className="text-brand-emerald">Master</span>
+          <h1 className="text-5xl sm:text-7xl md:text-[8rem] xl:text-[10rem] font-black leading-none tracking-tight uppercase italic mb-8">
+            Negotiation <br className="hidden sm:block" />
+            <span className="hidden sm:inline text-brand-emerald"> Master</span>
           </h1>
-          <p className="text-lg md:text-2xl text-neutral-400 font-medium max-w-2xl mx-auto leading-relaxed mb-16 px-4">
+          <p className="text-base md:text-2xl text-neutral-400 font-medium max-w-2xl mx-auto leading-relaxed mb-12 md:mb-16 px-4">
             Master the psychology of trade. Face advanced AI sellers, manipulate the margin, and secure your place in the global ledger.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center w-full max-w-md mx-auto sm:max-w-none">
             <button
               onClick={() => document.getElementById('terminal')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-brand-emerald text-black px-12 py-5 font-black text-xl uppercase tracking-tighter hover:bg-white hover:scale-105 transition-all relative group"
+              className="bg-brand-emerald text-black px-8 md:px-12 py-4 md:py-5 font-black text-lg md:text-xl uppercase tracking-tighter hover:bg-white hover:scale-105 transition-all relative group w-full sm:w-auto"
             >
               Initialize Game
               <div className="absolute inset-0 border-2 border-brand-emerald opacity-0 group-hover:opacity-100 group-hover:inset-[-6px] transition-all"></div>
             </button>
             <button
               onClick={() => document.getElementById('ledger')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-white/5 border border-white/10 px-12 py-5 font-black text-xl uppercase tracking-tighter hover:bg-white/10 transition-all backdrop-blur-md"
+              className="bg-white/5 border border-white/10 px-8 md:px-12 py-4 md:py-5 font-black text-lg md:text-xl uppercase tracking-tighter hover:bg-white/10 transition-all backdrop-blur-md w-full sm:w-auto"
             >
               View Ledger
             </button>
           </div>
         </motion.div>
 
-        {/* Modular Grid Background decoration */}
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-4 w-full max-w-4xl mt-12 opacity-30 select-none pointer-events-none">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div key={i} className="aspect-square border border-white/10 bg-white/5 relative flex items-center justify-center overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-1 bg-brand-emerald"></div>
-              {i % 3 === 0 && <Activity className="w-4 h-4 text-brand-emerald/40 animate-pulse" />}
-            </div>
-          ))}
+        {/* Interactive Modular Grid & System Log */}
+        <div className="flex flex-col lg:flex-row gap-8 w-full max-w-6xl mt-16 px-6">
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-3 flex-1 opacity-30 select-none cursor-crosshair">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <motion.div 
+                key={i} 
+                whileHover={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', scale: 1.05 }}
+                className="aspect-square border border-white/10 bg-white/5 relative flex items-center justify-center overflow-hidden transition-colors"
+              >
+                <div className="absolute top-0 left-0 w-1 h-1 bg-brand-emerald"></div>
+                {i % 4 === 0 ? (
+                  <Activity className="w-4 h-4 text-brand-emerald/40 animate-pulse" />
+                ) : (
+                   <div className="text-[6px] font-mono text-neutral-800">0x{i.toString(16)}</div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="w-full lg:w-72 bg-black/40 border border-white/5 p-4 font-mono text-left relative overflow-hidden group">
+             <div className="flex items-center gap-2 mb-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></div>
+                <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">System_Log.log</span>
+             </div>
+             <div className="space-y-1 h-32 overflow-y-auto custom-scrollbar pr-2">
+                {[
+                  "Init: Neural_Grid_Link...",
+                  "Auth: Signature_Verified",
+                  "Load: Archetype_Database",
+                  "Scan: Entity_Exchange",
+                  "Ping: Global_Ledger",
+                  "Status: Protocol_Stable",
+                  "Active: Session_0918-X"
+                ].map((log, i) => (
+                  <motion.p 
+                    key={i}
+                    initial={{ opacity: 0, x: -5 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.2 }}
+                    className="text-[9px] text-neutral-600 flex gap-2"
+                  >
+                    <span className="text-brand-emerald/40">[{Math.floor(Math.random()*24)}:{Math.floor(Math.random()*60)}]</span>
+                    {log}
+                  </motion.p>
+                ))}
+             </div>
+             <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+          </div>
         </div>
       </section>
 
@@ -192,7 +232,7 @@ export default function LandingPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {inventory.map((item, i) => {
                 const baseProduct = products.find(p => p.id === item.productId);
                 return (
@@ -201,30 +241,30 @@ export default function LandingPage({
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-brand-surface/40 border-2 border-brand-emerald/20 p-4 relative group"
+                    className="bg-brand-surface/40 border-2 border-brand-emerald/20 p-3 md:p-4 relative group"
                   >
                     <div className="absolute top-2 right-2 flex gap-1">
                       <div className="w-1 h-1 bg-brand-emerald"></div>
                       <div className="w-1 h-1 bg-brand-emerald animate-pulse"></div>
                     </div>
 
-                    <div className="aspect-square mb-4 bg-brand-dark/50 border border-white/5 overflow-hidden flex items-center justify-center p-4">
+                    <div className="aspect-square mb-3 md:mb-4 bg-brand-dark/50 border border-white/5 overflow-hidden flex items-center justify-center p-2 md:p-4">
                       {baseProduct ? (
                         <img src={baseProduct.image} alt={item.productName} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" />
                       ) : (
-                        <Layers className="w-12 h-12 text-neutral-800" />
+                        <Layers className="w-8 md:w-12 h-8 md:h-12 text-neutral-800" />
                       )}
                     </div>
 
-                    <h4 className="text-xs font-black uppercase italic tracking-wider truncate mb-2">{item.productName}</h4>
-                    <div className="flex justify-between items-end">
+                    <h4 className="text-[10px] md:text-xs font-black uppercase italic tracking-wider truncate mb-2">{item.productName}</h4>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
                       <div>
-                        <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Acq_Price</p>
-                        <p className="text-sm font-mono text-brand-emerald">${item.dealPrice.toLocaleString()}</p>
+                        <p className="text-[7px] md:text-[8px] font-black text-neutral-600 uppercase tracking-widest">Acq_Price</p>
+                        <p className="text-xs md:text-sm font-mono text-brand-emerald">${item.dealPrice.toLocaleString()}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Secure_Date</p>
-                        <p className="text-[10px] text-neutral-500">{new Date(item.date).toLocaleDateString()}</p>
+                      <div className="sm:text-right">
+                        <p className="text-[7px] md:text-[8px] font-black text-neutral-600 uppercase tracking-widest">Secure_Date</p>
+                        <p className="text-[9px] md:text-[10px] text-neutral-500">{new Date(item.date).toLocaleDateString()}</p>
                       </div>
                     </div>
                   </motion.div>
@@ -243,7 +283,7 @@ export default function LandingPage({
               <div className="text-brand-emerald text-xs font-black uppercase tracking-[0.5em] mb-4 flex items-center gap-2">
                 <span className="w-12 h-px bg-brand-emerald"></span> Modular Exchange
               </div>
-              <h2 className="text-6xl md:text-8xl font-black uppercase leading-none tracking-tighter italic">High-Stakes <br /> <span className="text-brand-emerald font-light">Inventory</span></h2>
+              <h2 className="text-4xl md:text-6xl lg:text-8xl font-black uppercase leading-none tracking-tighter italic">High-Stakes <br /> <span className="text-brand-emerald font-light">Inventory</span></h2>
             </div>
             <p className="text-neutral-500 font-medium max-w-sm text-right lg:mb-4">
               Exclusive modular sets currently locked in the negotiation chamber. Select an entity to begin protocol.
@@ -310,7 +350,10 @@ export default function LandingPage({
               <div className="text-brand-emerald text-xs font-black uppercase tracking-[0.5em] mb-4 flex items-center gap-2">
                 <span className="w-12 h-px bg-brand-emerald"></span> Verified Transactions
               </div>
-              <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic">Global <span className="text-brand-emerald">Ledger</span></h2>
+              <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter italic flex items-center gap-4">
+                Global <span className="text-brand-emerald">Ledger</span>
+                <span className="text-[10px] sm:text-[12px] font-black text-brand-emerald bg-brand-emerald/10 border border-brand-emerald/30 px-3 py-1 animate-pulse hidden sm:inline-block">LIVE_SYNC</span>
+              </h2>
             </div>
             <div className="bg-white/5 p-6 border border-white/10 max-w-xs">
               <div className="flex items-center gap-3 text-brand-emerald mb-2">
@@ -428,7 +471,7 @@ export default function LandingPage({
       <footer className="py-12 border-t border-white/5 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600">
           <div className="flex items-center gap-4">
-            <span>© 2026 NEGOTIATION MASTER</span>
+            <span>© 2026 NEGOTIATION <span className="hidden sm:inline">MASTER</span></span>
             <span className="h-4 w-px bg-white/10"></span>
             <span>Proprietary AI Engine</span>
           </div>
@@ -445,13 +488,20 @@ export default function LandingPage({
 
       <style>{`
         .outline-text {
-          -webkit-text-stroke: 1px rgba(255,255,255,0.1);
+          -webkit-text-stroke: 1px rgba(16, 185, 129, 0.1);
           color: transparent;
         }
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
           .outline-text {
-            -webkit-text-stroke: 2px rgba(255,255,255,0.1);
+            -webkit-text-stroke: 2px rgba(16, 185, 129, 0.1);
           }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #10b98122;
+          border-radius: 10px;
         }
       `}</style>
     </div>
