@@ -209,8 +209,20 @@ app.post("/api/negotiate/walkaway", async (req, res) => {
 app.get("/api/leaderboard", (req, res) => res.json(leaderboard.slice(0, 50)));
 
 async function startServer() {
-  const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
-  app.use(vite.middlewares);
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+    // Serve static files from the build directory
+    const distPath = path.resolve(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      // Don't intercept API routes
+      if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  } else {
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
+    app.use(vite.middlewares);
+  }
+  
   app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 }
 
