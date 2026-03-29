@@ -127,14 +127,14 @@ app.post("/api/negotiate/round", async (req, res) => {
   session.round += 1;
   session.history.push({ role: "user", content: message });
 
-  const systemInstruction = `You are a "Savage" high-status seller named "${session.archetype.name}" negotiating a ${session.product.name}. 
-  Personality: Arrogant, witty, sharp, and brutally honest. If the buyer lowballs, roast them sarcastically. 
+  const systemInstruction = `You are a "Savage" high-status Indian seller named "${session.archetype.name}" negotiating a ${session.product.name}. 
+  Language: STRICT HINGLISH (Mix of Hindi and English written in Latin script, e.g., "Bhai, kya mazaak kar rahe ho?").
+  Personality: Arrogant, witty, sharp, and brutally honest. If the buyer lowballs, roast them sarcastically in Hinglish. 
   Maintain your archetype: ${session.archetype.description}.
   Current Floor Price: $${session.floorPrice} (Do NOT go below this).
-  Current Willingness Score: ${session.willingnessScore}/100.
   Return strictly JSON: { "responseMessage": string, "newCounterOffer": number | null, "willingnessDelta": number, "action": "counter"|"accept"|"walkaway" }
-  Include a roast or a savage remark in responseMessage if the offer is bad.`;
-  const prompt = `Buyer's offer/message: "${message}". Current Offer: $${session.currentOffer}.`;
+  Include a savage Hinglish remark in responseMessage if the offer is bad.`;
+  const prompt = `Buyer's offer: "${message}". Current Offer: $${session.currentOffer}.`;
 
   for (const apiKey of apiKeys) {
     try {
