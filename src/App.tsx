@@ -140,7 +140,7 @@ export default function App() {
       if (data.status === 'walkaway') {
         handleWalkaway(true);
       } else if (data.status === 'deal') {
-        handleAccept(data.currentOffer);
+        handleAcceptDeal();
       }
     } catch (error) {
       console.error('Failed to send message', error);
@@ -148,7 +148,7 @@ export default function App() {
     }
   };
 
-  const handleAccept = async (finalPrice?: number) => {
+  const handleAcceptDeal = async () => {
     if (!session) return;
     try {
       const res = await fetch('/api/negotiate/accept', {
@@ -157,11 +157,19 @@ export default function App() {
         body: JSON.stringify({ sessionId: session.sessionId, playerName: playerName || 'Anonymous' })
       });
       const data = await res.json();
-      setDebrief({ ...data.summary, entry: data.entry, type: 'deal' });
-      setGameState('debrief');
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      if (data.success) {
+        // Save locally for serverless persistence
+        const localRanking = JSON.parse(localStorage.getItem('negotiation_ranking') || '[]');
+        localStorage.setItem('negotiation_ranking', JSON.stringify([data.entry, ...localRanking]));
+        
+        setDebrief({ ...data.summary, entry: data.entry, type: 'deal' });
+        setGameState('debrief');
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#10b981', '#34d399', '#ffffff'] });
+        fetchProducts(playerName);
+        fetchLeaderboard();
+      }
     } catch (error) {
-      console.error('Failed to accept deal', error);
+      console.error('Error accepting deal:', error);
     }
   };
 
@@ -344,7 +352,7 @@ export default function App() {
 
               <div className="grid grid-cols-2 md:grid-cols-1 gap-2 mt-auto">
                 <button
-                  onClick={() => handleAccept(currentOffer!)}
+                  onClick={() => handleAcceptDeal()}
                   className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl py-3 md:py-4 font-medium flex items-center justify-center gap-2 transition-all text-sm md:text-base"
                 >
                   <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
