@@ -24,20 +24,16 @@ const ARCHETYPES = [
 ];
 
 const PRODUCTS = [
-  { id: "premium-watch", name: "Luxury Chronograph Watch", listedPrice: 1200, currency: "$", image: "/images/products/watch.jpg" },
-  { id: "vintage-camera", name: "1970s Film Camera", listedPrice: 450, currency: "$", image: "/images/products/camera.jpg" },
-  { id: "gaming-laptop", name: "Next-Gen Gaming Laptop", listedPrice: 2100, currency: "$", image: "/images/products/laptop.jpg" },
-  { id: "electric-guitar", name: "Limited Edition Electric Guitar", listedPrice: 1500, currency: "$", image: "/images/products/guitar.jpg" },
-  { id: "sneakers", name: "Exclusive Designer Sneakers", listedPrice: 850, currency: "$", image: "/images/products/sneakers.jpg" },
-  { id: "rare-coin", name: "1909-S VDB Lincoln Cent", listedPrice: 2500, currency: "$", image: "/images/products/coin.jpg" },
-  { id: "arcade-cabinet", name: "Original Pac-Man Arcade Cabinet", listedPrice: 3200, currency: "$", image: "/images/products/arcade.jpg" }
+  { id: "motor-club", name: "Midnight Motor-Club", listedPrice: 1850, currency: "$", image: "https://images.unsplash.com/photo-1585366119957-e556f4002a01?auto=format&fit=crop&q=80&w=1000" },
+  { id: "zen-garden", name: "Botanical Zen Garden", listedPrice: 950, currency: "$", image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&q=80&w=1000" },
+  { id: "space-rig", name: "Deep Space Mining Rig", listedPrice: 2400, currency: "$", image: "https://images.unsplash.com/photo-1581833971358-2c8b551f8a4c?auto=format&fit=crop&q=80&w=1000" }
 ];
 
 // API Routes
 app.get("/api/products", (req, res) => {
   const playerName = req.query.playerName as string;
-  const inventory = playerName && userPurchases.has(playerName) 
-    ? userPurchases.get(playerName)! 
+  const inventory = playerName && userPurchases.has(playerName)
+    ? userPurchases.get(playerName)!
     : [];
   const purchasedIds = inventory.map(item => item.productId);
   res.json({ products: PRODUCTS, purchasedIds, inventory });
@@ -56,7 +52,7 @@ app.post("/api/negotiate/start", (req, res) => {
   const sessionId = crypto.randomUUID();
   const archetype = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
   const listed = product.listedPrice;
-  const floorPrice = Math.floor(listed * (0.6 + Math.random() * 0.2)); 
+  const floorPrice = Math.floor(listed * (0.6 + Math.random() * 0.2));
   const targetPrice = Math.floor(listed * (0.8 + Math.random() * 0.15));
 
   sessions.set(sessionId, {
@@ -132,7 +128,7 @@ app.post("/api/negotiate/accept", async (req, res) => {
 
   const entry = { id: crypto.randomUUID(), playerName: playerName || "Anonymous", dealPrice: deal, discountPct: (discountPct * 100).toFixed(1), rounds: session.round, score, timestamp: new Date().toISOString() };
   leaderboard.push(entry);
-  leaderboard.sort((a,b) => b.score - a.score);
+  leaderboard.sort((a, b) => b.score - a.score);
 
   const pName = playerName || "Anonymous";
   if (!userPurchases.has(pName)) userPurchases.set(pName, []);

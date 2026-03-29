@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, Trophy, XCircle, CheckCircle, Send, ArrowRight, Camera, User, Bot, AlertCircle } from 'lucide-react';
+import { MessageCircle, Trophy, XCircle, CheckCircle, Send, ArrowRight, Camera, User, Bot, AlertCircle, ShoppingBag, Terminal, Cpu } from 'lucide-react';
+import LandingPage from './components/LandingPage';
 import confetti from 'canvas-confetti';
 
 type GameState = 'home' | 'negotiating' | 'debrief';
@@ -24,6 +25,13 @@ interface Message {
   content: string;
 }
 
+interface InventoryItem {
+  productId: string;
+  productName: string;
+  dealPrice: number;
+  date: string;
+}
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('home');
   const [session, setSession] = useState<Session | null>(null);
@@ -37,6 +45,7 @@ export default function App() {
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('playerName') || '');
   const [products, setProducts] = useState<Product[]>([]);
   const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +71,8 @@ export default function App() {
       setProducts(data.products);
       const pIds = data.purchasedIds || [];
       setPurchasedIds(pIds);
-      
+      setInventory(data.inventory || []);
+
       // Auto-select first available product if none selected
       if (!selectedProductId || pIds.includes(selectedProductId)) {
         const firstAvailable = data.products.find((p: Product) => !pIds.includes(p.id));
@@ -161,7 +171,7 @@ export default function App() {
         // Save locally for serverless persistence
         const localRanking = JSON.parse(localStorage.getItem('negotiation_ranking') || '[]');
         localStorage.setItem('negotiation_ranking', JSON.stringify([data.entry, ...localRanking]));
-        
+
         setDebrief({ ...data.summary, entry: data.entry, type: 'deal' });
         setGameState('debrief');
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#10b981', '#34d399', '#ffffff'] });
@@ -190,125 +200,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 font-sans selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-brand-dark text-neutral-50 font-sans selection:bg-brand-emerald/30">
       <AnimatePresence mode="wait">
         {gameState === 'home' && (
-          <motion.div
-            key="home"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="max-w-4xl mx-auto p-6 pt-12 md:pt-24"
-          >
-            <div className="text-center mb-10 md:mb-16">
-              <h1 className="text-4xl md:text-7xl font-bold tracking-tighter mb-4 md:6 bg-gradient-to-br from-white to-neutral-500 bg-clip-text text-transparent px-4">
-                Negotiation Master
-              </h1>
-              <p className="text-base md:text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed px-4">
-                Face off against AI sellers with hidden constraints and distinct personalities. Secure the lowest price. Rank globally.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-16 px-2 md:px-0">
-              <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6 md:p-8 backdrop-blur-sm flex flex-col min-h-[500px] md:min-h-0">
-                <div className="mb-6">
-                  <label className="block text-xs md:text-sm text-neutral-400 mb-2">Enter your alias for the leaderboard</label>
-                  <input
-                    type="text"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="Anonymous"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors text-sm md:text-base text-neutral-200"
-                  />
-                </div>
-
-                <div className="flex items-center gap-3 mb-4">
-                  <Camera className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
-                  <h2 className="text-lg md:text-xl font-medium">Available Items</h2>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar mb-6 max-h-[250px] md:max-h-[350px]">
-                  {products.map((product) => {
-                    const isPurchased = (purchasedIds || []).includes(product.id);
-                    const isSelected = selectedProductId === product.id;
-                    return (
-                      <div 
-                        key={product.id}
-                        onClick={() => !isPurchased && setSelectedProductId(product.id)}
-                        className={`p-3 md:p-4 rounded-2xl border transition-all ${
-                          isPurchased 
-                            ? 'bg-neutral-900/30 border-neutral-900 opacity-50 cursor-not-allowed' 
-                            : isSelected 
-                              ? 'bg-emerald-900/10 border-emerald-500/50 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
-                              : 'bg-neutral-950 border-neutral-800/50 hover:border-neutral-700 cursor-pointer'
-                        }`}
-                        style={isPurchased ? { textDecoration: 'line-through' } : {}}
-                      >
-                        <div className="flex gap-3 md:gap-4 items-center">
-                          <div className={`relative w-16 h-12 md:w-20 md:h-16 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 shrink-0 ${isPurchased ? 'grayscale' : ''}`}>
-                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                            {isPurchased && (
-                              <div className="absolute inset-0 bg-neutral-950/40 backdrop-blur-[1px] flex items-center justify-center">
-                                <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-medium truncate text-sm md:text-base ${isPurchased ? 'line-through text-neutral-500 italic' : 'text-neutral-50'}`}>
-                              {product.name}
-                            </p>
-                            <div className="flex items-center justify-between mt-0.5 md:mt-1">
-                              <p className={`font-mono text-xs md:text-sm ${isPurchased ? 'text-neutral-600' : 'text-emerald-400'}`}>
-                                ${product.listedPrice.toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={startSession}
-                  disabled={!selectedProductId || !playerName.trim()}
-                  className="w-full bg-white text-black hover:bg-neutral-200 disabled:bg-neutral-800 disabled:text-neutral-500 transition-all rounded-xl py-3 md:py-4 font-semibold text-base md:text-lg flex items-center justify-center gap-2 group active:scale-95 shadow-lg shadow-white/5"
-                >
-                  Start Negotiating
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-
-              <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6 md:p-8 backdrop-blur-sm flex flex-col min-h-[300px] md:min-h-0">
-                <div className="flex items-center gap-3 mb-6">
-                  <Trophy className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />
-                  <h2 className="text-xl md:text-2xl font-medium">World Ranking</h2>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
-                  {leaderboard.length === 0 ? (
-                    <div className="text-center text-neutral-500 py-12 text-sm">No deals closed yet. Be the first!</div>
-                  ) : (
-                    leaderboard.map((entry, i) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 md:p-4 rounded-2xl bg-neutral-950 border border-neutral-800/50">
-                        <div className="flex items-center gap-3 md:gap-4">
-                          <span className="text-neutral-600 font-mono text-xs md:text-sm w-4">{i + 1}</span>
-                          <div>
-                            <p className="font-medium text-sm md:text-base">{entry.playerName}</p>
-                            <p className="text-[10px] md:text-xs text-neutral-500">{entry.rounds} rounds</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono text-emerald-400 text-sm md:text-base font-bold">${entry.dealPrice.toLocaleString()}</p>
-                          <p className="text-[10px] md:text-xs text-emerald-500/80">{entry.discountPct}% off</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <LandingPage
+            playerName={playerName}
+            setPlayerName={setPlayerName}
+            products={products}
+            selectedProductId={selectedProductId}
+            setSelectedProductId={setSelectedProductId}
+            startSession={startSession}
+            leaderboard={leaderboard}
+            purchasedIds={purchasedIds}
+            inventory={inventory}
+          />
         )}
 
         {gameState === 'negotiating' && session && (
@@ -317,115 +222,131 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="h-[100dvh] md:h-screen flex flex-col md:flex-row max-w-7xl mx-auto relative overflow-hidden"
+            className="h-[100dvh] md:h-screen flex flex-col md:flex-row max-w-7xl mx-auto relative overflow-hidden font-sans"
           >
-            {/* Left Panel - Info */}
-            <div className="w-full md:w-1/3 p-4 md:p-6 border-b md:border-b-0 md:border-r border-neutral-800 flex flex-col bg-neutral-900/40 backdrop-blur-md z-10 shrink-0">
-              <div className="flex items-center justify-between mb-4 md:mb-8">
-                <h2 className="text-lg md:text-xl font-bold tracking-tight">Active Deal</h2>
-                <div className="flex gap-1">
+            {/* Left Panel - Mission HUD */}
+            <div className="w-full md:w-80 p-6 border-b md:border-b-0 md:border-r border-white/5 flex flex-col bg-brand-surface/80 backdrop-blur-3xl z-10 shrink-0">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col">
+                  <h2 className="text-[10px] font-black tracking-[0.4em] text-neutral-500 uppercase mb-1">Mission_Status</h2>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-brand-emerald animate-pulse"></div>
+                    <span className="text-sm font-black uppercase italic tracking-tighter">Active_Protocol</span>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 bg-black/40 p-2 border border-white/5">
                   {Array.from({ length: session.maxRounds }).map((_, i) => (
                     <div
                       key={i}
-                      className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < round ? 'bg-emerald-500' : i === round ? 'bg-emerald-500 animate-pulse outline outline-emerald-500/30' : 'bg-neutral-800'}`}
+                      className={`w-1.5 h-3 ${i < round ? 'bg-brand-emerald' : i === round ? 'bg-brand-emerald/40 animate-[pulse_1s_infinite] border border-brand-emerald' : 'bg-white/5'}`}
                     />
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-0 bg-neutral-900/50 rounded-2xl p-4 md:p-6 mb-4 md:mb-6 border border-neutral-800">
-                <div className="col-span-2 md:col-span-1 border-b border-neutral-800/50 md:pb-4 mb-2 md:mb-4 pb-2">
-                   <p className="text-[10px] md:text-sm text-neutral-500 uppercase tracking-wider mb-1">Item Info</p>
-                   <p className="text-sm md:text-lg font-medium line-clamp-1">{session.product.name}</p>
+              <div className="space-y-6 mb-12">
+                <div className="p-4 border border-white/5 bg-black/20">
+                  <p className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.3em] mb-2">Subject_Target</p>
+                  <p className="text-xl font-black uppercase italic leading-none truncate">{session.product.name}</p>
                 </div>
 
-                <div className="md:mb-4">
-                  <p className="text-[10px] md:text-sm text-neutral-500 uppercase tracking-wider mb-0.5">Listed</p>
-                  <p className="text-base md:text-2xl font-mono text-neutral-300">${session.product.listedPrice.toLocaleString()}</p>
-                </div>
-
-                <div>
-                  <p className="text-[10px] md:text-sm text-neutral-500 uppercase tracking-wider mb-0.5">Offer</p>
-                  <p className="text-xl md:text-3xl font-mono text-emerald-400 font-bold">${currentOffer?.toLocaleString()}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-white/5 bg-black/20">
+                    <p className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.3em] mb-2">Floor_Value</p>
+                    <p className="text-lg font-mono text-neutral-400">${session.product.listedPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="p-4 border border-brand-emerald/20 bg-brand-emerald/5">
+                    <p className="text-[9px] font-black text-brand-emerald/50 uppercase tracking-[0.3em] mb-2">Current_Offer</p>
+                    <p className="text-xl font-mono text-brand-emerald font-black italic">${currentOffer?.toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-1 gap-2 mt-auto">
+              <div className="space-y-3 mt-auto">
                 <button
                   onClick={() => handleAcceptDeal()}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl py-3 md:py-4 font-medium flex items-center justify-center gap-2 transition-all text-sm md:text-base"
+                  className="w-full bg-brand-emerald text-black py-4 font-black uppercase italic tracking-tighter hover:bg-white active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                  Accept
+                  Confirm_Acquisition (Enter)
                 </button>
                 <button
                   onClick={() => handleWalkaway()}
-                  className="w-full bg-transparent border border-neutral-800 hover:bg-neutral-900 active:scale-95 text-neutral-400 rounded-xl py-3 md:py-4 font-medium flex items-center justify-center gap-2 transition-all text-sm md:text-base"
+                  className="w-full bg-transparent border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 text-neutral-500 hover:text-red-500 py-4 font-black uppercase italic tracking-tighter active:scale-95 transition-all text-[11px] flex items-center justify-center gap-2"
                 >
-                  <XCircle className="w-4 h-4 md:w-5 md:h-5" />
-                  Exit
+                  Abort_Mission (Esc)
                 </button>
               </div>
             </div>
 
-            {/* Right Panel - Chat */}
-            <div className="flex-1 flex flex-col min-h-0 bg-neutral-950/50">
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 custom-scrollbar">
+            {/* Main Chat HUD */}
+            <div className="flex-1 flex flex-col min-h-0 relative">
+              {/* Aesthetic Scanline effect */}
+              <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.3)_50%)] bg-[size:100%_4px] pointer-events-none opacity-20 z-0"></div>
+
+              <div className="flex-1 overflow-y-auto p-6 md:p-12 space-y-8 custom-scrollbar relative z-10">
                 {messages.map((msg, i) => (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: msg.role === 'user' ? 20 : -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     key={i}
-                    className={`flex gap-3 md:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                    className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
-                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-neutral-800' : 'bg-emerald-900/30 text-emerald-500'}`}>
-                      {msg.role === 'user' ? <User className="w-4 h-4 md:w-5 md:h-5" /> : <Bot className="w-4 h-4 md:w-5 md:h-5" />}
+                    <div className={`w-8 h-8 flex items-center justify-center shrink-0 border ${msg.role === 'user' ? 'bg-white/10 border-white/20' : 'bg-brand-emerald/5 border-brand-emerald/30 text-brand-emerald'}`}>
+                      {msg.role === 'user' ? <Terminal className="w-4 h-4" /> : <Cpu className="w-4 h-4" />}
                     </div>
-                    <div className={`max-w-[85%] md:max-w-[80%] rounded-2xl p-3 md:p-4 text-sm md:text-base ${msg.role === 'user' ? 'bg-neutral-800 text-white rounded-tr-sm shadow-xl shadow-black/20' : 'bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-tl-sm'}`}>
+                    <div className={`max-w-[85%] md:max-w-[70%] p-4 text-sm md:text-base leading-relaxed ${msg.role === 'user' ? 'bg-white/5 border border-white/10 text-white italic' : 'bg-brand-surface border border-white/5 text-neutral-300'}`}>
+                      <div className="text-[8px] font-black uppercase tracking-[0.4em] text-neutral-600 mb-2">
+                        {msg.role === 'user' ? 'Outgoing_Signal' : 'Incoming_Analysis'}
+                      </div>
                       {msg.content}
                     </div>
                   </motion.div>
                 ))}
 
                 {isTyping && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 md:gap-4">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-900/30 text-emerald-500 flex items-center justify-center shrink-0">
-                      <Bot className="w-4 h-4 md:w-5 md:h-5" />
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
+                    <div className="w-8 h-8 flex items-center justify-center border bg-brand-emerald/5 border-brand-emerald/30 text-brand-emerald">
+                      <Cpu className="w-4 h-4" />
                     </div>
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl rounded-tl-sm p-3 md:p-4 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-neutral-500 rounded-full animate-bounce" />
-                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    <div className="bg-brand-surface border border-brand-emerald/20 p-4 flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-brand-emerald rounded-full animate-bounce" />
+                      <div className="w-1.5 h-1.5 bg-brand-emerald rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-1.5 h-1.5 bg-brand-emerald rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <span className="text-[8px] font-black tracking-widest text-brand-emerald uppercase animate-pulse ml-2">Processing_Counter_Logic</span>
                     </div>
                   </motion.div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="p-4 md:p-6 bg-neutral-950 border-t border-neutral-800">
+              <div className="p-8 md:p-12 bg-brand-dark/50 border-t border-white/5 relative z-10 backdrop-blur-xl">
                 <form
                   onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-                  className="relative flex items-center"
+                  className="max-w-4xl mx-auto relative flex items-center group"
                 >
+                  <div className="absolute left-4 z-10 text-brand-emerald opacity-40 group-focus-within:opacity-100 transition-opacity">
+                    <Terminal className="w-5 h-5" />
+                  </div>
                   <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Make your offer..."
+                    placeholder="ENTER_INPUT_PACKET_HERE..."
                     disabled={isTyping}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl pl-5 md:pl-6 pr-14 md:pr-16 py-3 md:py-4 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 text-sm md:text-base"
+                    className="w-full bg-brand-surface border border-white/10 py-6 pl-14 pr-16 text-lg font-black uppercase tracking-widest focus:outline-none focus:border-brand-emerald/50 transition-all disabled:opacity-20 placeholder:text-neutral-800"
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || isTyping}
-                    className="absolute right-2 p-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 disabled:bg-neutral-800 text-white rounded-xl transition-all"
+                    className="absolute right-4 p-3 bg-brand-emerald text-black hover:bg-white active:scale-95 disabled:bg-neutral-900/50 transition-all"
                   >
-                    <Send className="w-4 h-4 md:w-5 md:h-5" />
+                    <Send className="w-5 h-5" />
                   </button>
                 </form>
-                <p className="text-[10px] md:text-xs text-neutral-500 mt-3 text-center">
-                  Round {round} / {session.maxRounds}
-                </p>
+                <div className="mt-4 flex justify-between items-center text-[8px] font-black tracking-[0.4em] text-neutral-700 uppercase">
+                  <span>Transmission_Encryption: AES-1024</span>
+                  <span className="text-neutral-500">Protocol_Iter: 0{round} / 0{session.maxRounds}</span>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -475,7 +396,7 @@ export default function App() {
                     <h3 className="font-medium text-base md:text-lg mb-1 md:mb-2">Expert Analysis</h3>
                     <p className="text-xs md:text-sm text-neutral-400 leading-relaxed italic line-clamp-4">{debrief.insight}</p>
                     <div className="mt-4 pt-4 border-t border-neutral-800 space-y-2">
-                       <div className="flex justify-between items-center text-xs md:text-sm">
+                      <div className="flex justify-between items-center text-xs md:text-sm">
                         <span className="text-neutral-500">Seller Personality</span>
                         <span className="font-medium">{debrief.archetype}</span>
                       </div>
