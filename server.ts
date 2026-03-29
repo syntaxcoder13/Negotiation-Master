@@ -3,7 +3,7 @@ dotenv.config({ override: true });
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import Groq from "groq-sdk";
 import crypto from "crypto";
 
 const app = express();
@@ -24,41 +24,44 @@ const ARCHETYPES = [
 ];
 
 const PRODUCTS = [
-  { id: "vintage-camera", name: "Vintage Leica M3 Camera", listedPrice: 18000, currency: "$" },
-  { id: "rolex-watch", name: "Rolex Submariner 1990", listedPrice: 12500, currency: "$" },
-  { id: "sports-car", name: "1967 Ford Mustang Fastback", listedPrice: 85000, currency: "$" },
-  { id: "rare-coin", name: "1909-S VDB Lincoln Cent", listedPrice: 2500, currency: "$" },
-  { id: "arcade-cabinet", name: "Original Pac-Man Arcade Cabinet", listedPrice: 3200, currency: "$" }
+  { id: "premium-watch", name: "Luxury Chronograph Watch", listedPrice: 1200, currency: "$", image: "/images/products/watch.jpg" },
+  { id: "vintage-camera", name: "1970s Film Camera", listedPrice: 450, currency: "$", image: "/images/products/camera.jpg" },
+  { id: "gaming-laptop", name: "Next-Gen Gaming Laptop", listedPrice: 2100, currency: "$", image: "/images/products/laptop.jpg" },
+  { id: "electric-guitar", name: "Limited Edition Electric Guitar", listedPrice: 1500, currency: "$", image: "/images/products/guitar.jpg" },
+  { id: "sneakers", name: "Exclusive Designer Sneakers", listedPrice: 850, currency: "$", image: "/images/products/sneakers.jpg" },
+  { id: "rare-coin", name: "1909-S VDB Lincoln Cent", listedPrice: 2500, currency: "$", image: "/images/products/coin.jpg" },
+  { id: "arcade-cabinet", name: "Original Pac-Man Arcade Cabinet", listedPrice: 3200, currency: "$", image: "/images/products/arcade.jpg" }
 ];
 
-const userPurchases = new Map<string, Set<string>>();
+const userPurchases = new Map<string, any[]>();
 
 // API Routes
 app.get("/api/products", (req, res) => {
   const playerName = req.query.playerName as string;
-  const purchased = playerName && userPurchases.has(playerName) 
-    ? Array.from(userPurchases.get(playerName)!) 
+  const inventory = playerName && userPurchases.has(playerName) 
+    ? userPurchases.get(playerName)! 
     : [];
-  res.json({ products: PRODUCTS, purchased });
+  const purchasedIds = inventory.map(item => item.productId);
+  res.json({ products: PRODUCTS, purchasedIds, inventory });
 });
 
 app.post("/api/negotiate/start", (req, res) => {
   const { productId, playerName } = req.body || {};
-  
+
   const product = PRODUCTS.find(p => p.id === productId) || PRODUCTS[0];
 
-  if (playerName && userPurchases.get(playerName)?.has(product.id)) {
+  if (playerName && userPurchases.get(playerName)?.some(p => p.productId === product.id)) {
     return res.status(400).json({ error: "You have already purchased this item." });
   }
 
   const sessionId = crypto.randomUUID();
   const archetype = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
-  
+
   // Randomize floor and target based on listed price
   const listed = product.listedPrice;
   const floorPrice = Math.floor(listed * (0.6 + Math.random() * 0.2)); // 60% - 80% of listed price
   const targetPrice = Math.floor(listed * (0.8 + Math.random() * 0.15)); // 80% - 95% of listed price
-  
+
   sessions.set(sessionId, {
     id: sessionId,
     product: product,
@@ -97,13 +100,15 @@ app.post("/api/negotiate/round", async (req, res) => {
     return res.json({ status: "walkaway", message: "The seller walked away. You took too many rounds." });
   }
 
-  let apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-    // Fallback to the key provided by the user if the environment variable is not properly injected
-    apiKey = "AIzaSyB_XKyQlct4DT6gLczO_XvVeE8LB3rre9A";
-  }
+  const apiKeys = [
+    process.env.GROQ_API_KEY_1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3
+  ].filter(Boolean);
 
-  const ai = new GoogleGenAI({ apiKey });
+  if (apiKeys.length === 0) {
+    return res.status(500).json({ error: "Groq API keys are not configured. Please add GROQ_API_KEY_1 to your .env file." });
+  }
 
   session.round += 1;
   session.history.push({ role: "user", content: message });
@@ -133,69 +138,120 @@ You must return a JSON object with the following structure:
   "action": "counter" | "accept" | "walkaway"
 }`;
 
-  try {
-    const chatHistory = session.history.map((msg: any) => 
-      `${msg.role === 'user' ? 'Buyer' : 'Seller'}: ${msg.content}`
-    ).join('\n');
+  const chatHistory = session.history.map((msg: any) =>
+    `${msg.role === 'user' ? 'Buyer' : 'Seller'}: ${msg.content}`
+  ).join('\n');
 
-    const prompt = `Conversation History:\n${chatHistory}\n\nBuyer's latest message: "${message}"\n\nAnalyze the buyer's message and provide your response.`;
+  const prompt = `Conversation History:\n${chatHistory}\n\nBuyer's latest message: "${message}"\n\nAnalyze the buyer's message and provide your response in JSON format.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            responseMessage: { type: Type.STRING },
-            newCounterOffer: { type: Type.NUMBER, nullable: true },
-            willingnessDelta: { type: Type.NUMBER },
-            action: { type: Type.STRING, enum: ["counter", "accept", "walkaway"] }
-          },
-          required: ["responseMessage", "willingnessDelta", "action"]
-        }
+  let lastError = null;
+
+  for (const apiKey of apiKeys) {
+    try {
+      const groq = new Groq({ apiKey });
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" }
+      });
+
+      const result = JSON.parse(chatCompletion.choices[0]?.message?.content || "{}");
+
+      session.willingnessScore = Math.max(0, Math.min(100, session.willingnessScore + result.willingnessDelta));
+      session.history.push({ role: "assistant", content: result.responseMessage });
+
+      if (result.action === "counter" && result.newCounterOffer) {
+        session.currentOffer = result.newCounterOffer;
+      } else if (result.action === "accept") {
+        session.status = "deal";
+        if (result.newCounterOffer) session.currentOffer = result.newCounterOffer;
+      } else if (result.action === "walkaway") {
+        session.status = "walkaway";
       }
-    });
 
-    const result = JSON.parse(response.text || "{}");
-    
-    session.willingnessScore = Math.max(0, Math.min(100, session.willingnessScore + result.willingnessDelta));
-    session.history.push({ role: "assistant", content: result.responseMessage });
-    
-    if (result.action === "counter" && result.newCounterOffer) {
-      session.currentOffer = result.newCounterOffer;
-    } else if (result.action === "accept") {
-      session.status = "deal";
-      // The deal price is the last offer from the user, but we might not have parsed it.
-      // Let's just use the currentOffer or let the client explicitly accept.
-      // Actually, if AI accepts, the deal price is whatever the user offered.
-      // For simplicity, we'll let the client explicitly call /api/negotiate/accept to finalize a deal,
-      // or if AI accepts, we need to know the price. Let's assume the AI sets newCounterOffer to the agreed price.
-      if (result.newCounterOffer) session.currentOffer = result.newCounterOffer;
-    } else if (result.action === "walkaway") {
-      session.status = "walkaway";
+      return res.json({
+        responseMessage: result.responseMessage,
+        currentOffer: session.currentOffer,
+        action: result.action,
+        round: session.round,
+        status: session.status
+      });
+
+    } catch (error: any) {
+      console.error(`Error with API Key ${apiKey?.slice(0, 10)}...:`, error.message);
+      lastError = error;
+
+      // If it's a 401 or 429, try the next key
+      if (error.status === 401 || error.status === 429) {
+        continue;
+      } else {
+        // For other errors, break the loop
+        break;
+      }
     }
-
-    res.json({
-      responseMessage: result.responseMessage,
-      currentOffer: session.currentOffer,
-      action: result.action,
-      round: session.round,
-      status: session.status
-    });
-
-  } catch (error: any) {
-    console.error("AI Error:", error);
-    if (error.message && error.message.includes("API key not valid")) {
-      return res.status(500).json({ error: "Your Gemini API key is invalid. Please check your AI Studio Secrets panel and ensure you have provided a valid API key." });
-    }
-    res.status(500).json({ error: "Failed to generate response. Please try again." });
   }
+
+  // If we reach here, all keys failed or no keys were valid
+  if (lastError) {
+    if (lastError.status === 401 || (lastError.message && (lastError.message.includes("API key") || lastError.message.includes("api_key")))) {
+      return res.status(500).json({ error: "Your Groq API keys are invalid. Please check your .env file." });
+    }
+    return res.status(500).json({ error: lastError.message || "Failed to generate response after trying all API keys." });
+  }
+
+  return res.status(500).json({ error: "Failed to generate response. Please try again." });
 });
 
-app.post("/api/negotiate/accept", (req, res) => {
+async function generateNegotiationInsight(session: any) {
+  const apiKeys = [
+    process.env.GROQ_API_KEY_1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3
+  ].filter(Boolean);
+
+  if (apiKeys.length === 0) return "No API keys available for insight generation.";
+
+  const chatHistory = session.history.map((msg: any) =>
+    `${msg.role === 'user' ? 'Buyer' : 'Seller'}: ${msg.content}`
+  ).join('\n');
+
+  const systemInstruction = `You are a negotiation expert. Analyze the conversation history between a Buyer and a Seller for a ${session.product.name}.
+Categorize the Buyer's style as one of these: "Aggressive", "Logical", "Humble", "Impatient", or "Persuasive".
+Provide a brief 2-3 sentence feedback in the second person (using "You").
+Example: "You were quite logical, focusing on the camera's age to justify a lower price. This balanced approach kept the seller's interest without insulting them."
+
+Return a JSON object:
+{
+  "style": "Style Name",
+  "feedback": "Your feedback text"
+}`;
+
+  for (const apiKey of apiKeys) {
+    try {
+      const groq = new Groq({ apiKey });
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: `Analyze this history:\n${chatHistory}\nFinal Outcome: ${session.status === 'deal' ? 'Deal reached at $' + session.currentOffer : 'No deal reached.'}` }
+        ],
+        model: "llama-3.1-8b-instant", // Using a smaller model for speed
+        response_format: { type: "json_object" }
+      });
+
+      const result = JSON.parse(completion.choices[0]?.message?.content || "{}");
+      return `[Style: ${result.style}] ${result.feedback}`;
+    } catch (e) {
+      console.error("Insight Error:", e);
+      continue;
+    }
+  }
+  return "Could not generate insight.";
+}
+
+app.post("/api/negotiate/accept", async (req, res) => {
   const { sessionId, playerName } = req.body;
   const session = sessions.get(sessionId);
 
@@ -204,15 +260,15 @@ app.post("/api/negotiate/accept", (req, res) => {
   }
 
   session.status = "deal";
-  
+
   // Calculate score
   const listed = session.product.listedPrice;
   const deal = session.currentOffer;
   const discountPct = ((listed - deal) / listed);
-  
+
   const roundsRemaining = session.maxRounds - session.round;
   const efficiencyBonus = 1.0 + (0.05 * roundsRemaining);
-  
+
   const score = Math.round(discountPct * 1000 * efficiencyBonus);
 
   const entry = {
@@ -229,12 +285,19 @@ app.post("/api/negotiate/accept", (req, res) => {
 
   const pName = playerName || "Anonymous";
   if (!userPurchases.has(pName)) {
-    userPurchases.set(pName, new Set());
+    userPurchases.set(pName, []);
   }
-  userPurchases.get(pName)!.add(session.product.id);
+  userPurchases.get(pName)!.push({
+    productId: session.product.id,
+    productName: session.product.name,
+    dealPrice: deal,
+    date: new Date().toISOString()
+  });
 
   leaderboard.push(entry);
   leaderboard.sort((a, b) => b.score - a.score);
+
+  const aiInsight = await generateNegotiationInsight(session);
 
   res.json({
     success: true,
@@ -242,12 +305,12 @@ app.post("/api/negotiate/accept", (req, res) => {
     summary: {
       floorPrice: session.floorPrice,
       archetype: session.archetype.name,
-      insight: `You negotiated with ${session.archetype.name}. Your final price was $${deal}, which was $${deal - session.floorPrice} above their absolute bottom line.`
+      insight: aiInsight
     }
   });
 });
 
-app.post("/api/negotiate/walkaway", (req, res) => {
+app.post("/api/negotiate/walkaway", async (req, res) => {
   const { sessionId } = req.body;
   const session = sessions.get(sessionId);
 
@@ -255,12 +318,14 @@ app.post("/api/negotiate/walkaway", (req, res) => {
     session.status = "walkaway";
   }
 
+  const aiInsight = await generateNegotiationInsight(session);
+
   res.json({
     success: true,
     summary: {
       floorPrice: session?.floorPrice,
       archetype: session?.archetype?.name,
-      insight: `You walked away from ${session?.archetype?.name}. Their absolute bottom line was $${session?.floorPrice}.`
+      insight: aiInsight
     }
   });
 });
